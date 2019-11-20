@@ -52,18 +52,25 @@ register_rest_route(
           'callback' => 'getUserOrders',
         )
   );
-register_rest_route(
+  register_rest_route(
     'drive', '/insertFiles/',
-        array(
-          'methods'  => 'POST',
-          'callback' => 'insertFiles',
-        )
+    array(
+      'methods'  => 'POST',
+      'callback' => 'insertFiles',
+    )
   );
-register_rest_route(
+  register_rest_route(
+    'drive', '/getUsersS3Files/',
+    array(
+      'methods'  => 'POST',
+      'callback' => 'getUsersS3Files',
+    )
+  );
+  register_rest_route(
     'drive', '/updateUserDetails/',
-        array(
-          'methods'  => 'POST',
-          'callback' => 'updateUserDetails',
+    array(
+      'methods'  => 'POST',
+      'callback' => 'updateUserDetails',
     )
   );
 }
@@ -545,97 +552,7 @@ function getUserOrders($request){
   
      
 }
- /**
-     * 
-     * @param type $request
-     *  Checking Login getUserInfo 
-*/
-function insertFiles($request){
-      //     $responsecreds = array('myfiles',array(
-      //       'Key',"dude/jackass.png",
-      //       'lastmodified',"dude/jackass.png",
-      //       'size',"dude/jackass.png",
-      //       'ETag',"dude/jackass.png", 
-      //       array(
-      //       'Key',"dude/jackass.png",
-      //       'lastmodified',"dude/jackass.png",
-      //       'size',"dude/jackass.png",
-      //       'ETag',"dude/jackass.png"
-      //       )
-      //    )
-      // );
-          
-         $filesArray=array();
-         $data['Key']="dude/jackass.png";
-         $data['lastmodified']="Thu Nov 14 2019 11:04:00 GMT+0530 (India Standard Time)";
-         $data['size']="1829127";
-         $data['ETag']="12931ab6dbc48da5089af02c31caf652";
-         $data['isDeleted']=false;
-         $responsecreds['myfiles'][]=$data;
-         
-         $data['Key']="dudasfasfssssse/jackafdasfasfss.png";
-         $data['lastmodified']="Thu Nov 14 2019 11:04:00 GMT+0530 (India Standard Time)";
-         $data['size']="182912242347";
-         $data['ETag']="12931ab6dbc48asfasfdda5089af02c31caf652";
-         $data['isDeleted']=false;
-         $responsecreds['myfiles'][]=$data;
-         $data['Key']="dudasfasdfasfase/jackass.png";
-         $data['lastmodified']="Thu Nov 14 2019 11:04:00 GMT+0530 (India Standard Time)";
-         $data['size']="182234242429127";
-         $data['ETag']="12931ab6dbc48da5089af02c31caf652";
-         $data['isDeleted']=false;
-         $responsecreds['myfiles'][]=$data;
-          $adsf['Key']="dudasfasdfasfase/jackass.png";
-         $adsf['lastmodified']="Thu Nov 14 2019 11:04:00 GMT+0530 (India Standard Time)";
-         $adsf['size']="182234242429127";
-         $adsf['ETag']="12931ab6dbc48da5089af02c31caf652";
-         $adsf['isDeleted']=false;
-         $responsecreds['abcdef'][]=$adsf;
-         
-          echo json_encode($responsecreds);die;
-                   
-        ## Verify Token
-         if(!empty($request["email"]) && isset($request["email"]) ){
-            $users = get_user_by( 'email', 'moiz@creativemirza.com' );
-            
-            if(!empty($users)){
-                $havemyfiles = get_user_meta($users->ID, 'myfiles', false);
-                if(!empty($havemyfiles)){
-                   $filesArray= $havemyfiles;
-                   //update  previous get and add new  :-              Condition
-                   
-                   //$user_id=$users[0]->ID;
-                   //uploadedsfiles  :- key with the name of this
-                   // $updated = update_user_meta( $user_id, 'uploadedsfiles', $responsecreds );
-                }else{
-                    //add new key and value
-                    // $updated = update_user_meta( $user_id, 'uploadedsfiles', $responsecreds );
-                }
-                die;
-                
-                    $responsecreds['status']="success";
-                    $responsecreds['data']=$havemyfiles;
-                    
-                return $responsecreds;
-                
-            }else{
-                $responsecreds['status']="error";
-                $responsecreds['message']="Invalid Token Please try again";
-                return $responsecreds;
-                
-            }
-            
-    
-         }else{
-                $responsecreds['status']="error";
-                $responsecreds['message']="Invalid Token Please try again";
-                return $responsecreds;
-                
-            }
-         
-  
-     
-}
+
 function getIndentificationString($length = 50) {
     $base64Chars = 'Aqrstuvwadfxyz0%^1234asf56789abcde&^fghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ+/';
     $result = '';
@@ -645,3 +562,110 @@ function getIndentificationString($length = 50) {
     return $result;
 }
 
+
+function insertFiles($request){
+  $auth = apache_request_headers();
+          ## Verify Token
+    if(isset($auth['Authorization']) && $auth['Authorization']!=""){
+      $users = get_users(array(
+        'meta_key'     => '__auth_token_for_shared_drive__',
+        'meta_value'   => $auth['Authorization'],
+        'meta_compare' => '=',
+      ));
+      $user_id=$users[0]->ID;
+      $myfiles=array();
+      $responsedata=array();
+      $data=array();
+      $data['key']=$request['key'];
+      $data['name']=$request['name'];
+      $data['note']=$request['note'];
+      $data['id']=$request['lastModified'];
+      $data['lastModified']=$request['lastModified'];
+      $data['uploadedBy']=$request['uploadedBy'];
+      $data['isDeleted']=$request['isDeleted'];
+      $requestedFileName=$request['folderName'];
+      $user_id=$users[0]->ID;
+        if(!empty($users)){
+           $havemyfiles = get_user_meta($user_id, $requestedFileName, false);
+           $checkfolderName = get_user_meta($user_id, "allcreatedFolders", true);
+           if(!empty($checkfolderName)){
+              $addfolderName=$checkfolderName.",".$requestedFileName;
+              $updated = update_user_meta( $user_id, "allcreatedFolders", $addfolderName);
+           }else{
+              $addfolderName=$requestedFileName;
+              $updated = update_user_meta( $user_id, "allcreatedFolders", $addfolderName);
+           }
+           //Already Exist files
+           if(!empty($havemyfiles)){
+              // $filesArray= $havemyfiles;
+              $havemyfiles = get_user_meta($user_id, $requestedFileName, false);
+              if(!empty($havemyfiles)){
+                for($k=0;$k<count($havemyfiles[0][$requestedFileName]);$k++){
+                  $responsed[$requestedFileName][]=$havemyfiles[0][$requestedFileName][$k];
+                }
+              }
+               $responsed[$requestedFileName][]=$data;
+               $updated = update_user_meta( $user_id, $requestedFileName, $responsed );
+           }else{
+               //add new key and value
+               $myfiles[$requestedFileName][]=$data;
+               $updated = update_user_meta( $user_id, $requestedFileName, $myfiles );
+           }
+               $responsecreds['status']="success";
+               return new WP_REST_Response($responsecreds, 200);
+       }else{
+           $responsecreds['status']="error";
+           $responsecreds['message']="Invalid Token Please try again";
+           return new WP_REST_Response($responsecreds, 401);
+       }
+    }else{
+             $responsecreds['status']="error";
+           $responsecreds['message']="Invalid Token Please try again";
+           return new WP_REST_Response($responsecreds, 401);
+       }
+}
+
+function returnFolderNotFoundErr() {
+  $responsecreds = array();
+  $responsecreds['status']="error";
+  $responsecreds['message']="Folder not found!";
+  return new WP_REST_Response($responsecreds, 404);
+}
+
+function return401Err() {
+  $responsecreds = array();
+  $responsecreds['status']="error";
+  $responsecreds['message']="Invalid Token Please try again!";
+  return new WP_REST_Response($responsecreds, 401);
+}
+
+function getUsersS3Files($request){
+  $responsecreds = array();
+  $auth = apache_request_headers();
+  ## Verify Token
+  if(isset($auth['Authorization']) && $auth['Authorization']!=""){
+    $users = get_users(array(
+      'meta_key'     => '__auth_token_for_shared_drive__',
+      'meta_value'   => $auth['Authorization'],
+      'meta_compare' => '=',
+    ));
+    if(!empty($users)){
+      $user_id=$users[0]->ID;
+      $req=$request['folderName'];
+      if(!empty($req)){
+        $files = get_user_meta($user_id, $req, false);
+        if (!empty($files)) {
+          return new WP_REST_Response($files[0][$req], 200);
+        } else {
+          return returnFolderNotFoundErr();
+        }
+      } else {
+        return returnFolderNotFoundErr();
+      }
+    }else{
+      return return401Err();
+    }
+  }else{
+    return return401Err();
+  }
+}
