@@ -7,7 +7,11 @@
  * Author: Simran
  * Author URI:  http://mutewebtechnologies.com/
  */
- /*** Setting Routs for the webservice */
+require_once('msg.php');
+require_once('S3foldersCrud.php');
+require_once('S3FilesCrud.php');
+
+/*** Setting Routs for the webservice */
 add_action( 'rest_api_init', 'register_api_hooks' );
 function register_api_hooks() {
   register_rest_route(
@@ -24,33 +28,33 @@ function register_api_hooks() {
       'callback' => 'loggout',
     )
   );
-register_rest_route(
+  register_rest_route(
     'drive', '/changePassword/',
-        array(
-          'methods'  => 'POST',
-          'callback' => 'changePassword',
+    array(
+      'methods'  => 'POST',
+      'callback' => 'changePassword',
     )
   );
-register_rest_route(
+  register_rest_route(
     'drive', '/verifyToken/',
-        array(
-          'methods'  => 'POST',
-          'callback' => 'verifyToken',
-        )
+    array(
+      'methods'  => 'POST',
+      'callback' => 'verifyToken',
+    )
   );
-register_rest_route(
+  register_rest_route(
     'drive', '/getUserInfo/',
-        array(
-          'methods'  => 'POST',
-          'callback' => 'getUserInfo',
-        )
+    array(
+      'methods'  => 'POST',
+      'callback' => 'getUserInfo',
+    )
   );
-register_rest_route(
+  register_rest_route(
     'drive', '/getUserOrders/',
-        array(
-          'methods'  => 'POST',
-          'callback' => 'getUserOrders',
-        )
+    array(
+      'methods'  => 'POST',
+      'callback' => 'getUserOrders',
+    )
   );
   register_rest_route(
     'drive', '/insertFiles/',
@@ -60,10 +64,24 @@ register_rest_route(
     )
   );
   register_rest_route(
+    'drive', '/getUsersFolders/',
+    array(
+      'methods'  => 'GET',
+      'callback' => 'getUsersFolders',
+    )
+  );
+  register_rest_route(
     'drive', '/getUsersS3Files/',
     array(
       'methods'  => 'POST',
-      'callback' => 'getUsersS3Files',
+      'callback' => 'getUserS3Files',
+    )
+  );
+  register_rest_route(
+    'drive', '/deleteUsersS3Files/',
+    array(
+      'methods'  => 'POST',
+      'callback' => 'deleteUsersS3Files',
     )
   );
   register_rest_route(
@@ -74,7 +92,6 @@ register_rest_route(
     )
   );
 }
-
  /**
      * 
      * @param type $requestedToken
@@ -577,9 +594,10 @@ function insertFiles($request){
       $responsedata=array();
       $data=array();
       $data['key']=$request['key'];
+      $data['displayName']=$request['displayName'];
       $data['name']=$request['name'];
       $data['note']=$request['note'];
-      $data['id']=$request['lastModified'];
+      $data['id']=$request['id'];
       $data['lastModified']=$request['lastModified'];
       $data['uploadedBy']=$request['uploadedBy'];
       $data['isDeleted']=$request['isDeleted'];
@@ -623,49 +641,4 @@ function insertFiles($request){
            $responsecreds['message']="Invalid Token Please try again";
            return new WP_REST_Response($responsecreds, 401);
        }
-}
-
-function returnFolderNotFoundErr() {
-  $responsecreds = array();
-  $responsecreds['status']="error";
-  $responsecreds['message']="Folder not found!";
-  return new WP_REST_Response($responsecreds, 404);
-}
-
-function return401Err() {
-  $responsecreds = array();
-  $responsecreds['status']="error";
-  $responsecreds['message']="Invalid Token Please try again!";
-  return new WP_REST_Response($responsecreds, 401);
-}
-
-function getUsersS3Files($request){
-  $responsecreds = array();
-  $auth = apache_request_headers();
-  ## Verify Token
-  if(isset($auth['Authorization']) && $auth['Authorization']!=""){
-    $users = get_users(array(
-      'meta_key'     => '__auth_token_for_shared_drive__',
-      'meta_value'   => $auth['Authorization'],
-      'meta_compare' => '=',
-    ));
-    if(!empty($users)){
-      $user_id=$users[0]->ID;
-      $req=$request['folderName'];
-      if(!empty($req)){
-        $files = get_user_meta($user_id, $req, false);
-        if (!empty($files)) {
-          return new WP_REST_Response($files[0][$req], 200);
-        } else {
-          return returnFolderNotFoundErr();
-        }
-      } else {
-        return returnFolderNotFoundErr();
-      }
-    }else{
-      return return401Err();
-    }
-  }else{
-    return return401Err();
-  }
 }
