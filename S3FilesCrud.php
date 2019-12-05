@@ -5,17 +5,24 @@ function getUserS3Files($request){
   $auth = apache_request_headers();
   ## Verify Token
   if(isset($auth['Authorization']) && $auth['Authorization']!=""){
-    $users = get_users(array(
-      'meta_key'     => '__auth_token_for_shared_drive__',
-      'meta_value'   => $auth['Authorization'],
-      'meta_compare' => '=',
-    ));
-    if(!empty($users)){
-      $user_id=$users[0]->ID;
-      $req=$request['folderName'];
-      if(!empty($req)){
-        $files = get_user_meta($user_id, $req, true);
-        $activefiles=array();
+    
+    $req=$request['folderName'];
+    if(!empty($req)){
+      if ($request['userId']) {
+        $userId = $request['userId'];
+      } else {
+        $users = get_users(array(
+          'meta_key'     => '__auth_token_for_shared_drive__',
+          'meta_value'   => $auth['Authorization'],
+          'meta_compare' => '=',
+        ));
+        if(!empty($users)){
+          $userId=$users[0]->ID;
+        }
+      }
+      $files = get_user_meta($userId, $req, true);
+      $activefiles=array();
+      if(!empty($files)){
         for($i=0;$i<count($files[$req]);$i++){
           $item = $files[$req][$i];
           if ($item['isDeleted']) {
@@ -24,13 +31,13 @@ function getUserS3Files($request){
             array_push($activefiles, $item);
           }
         }
-      
-        return new WP_REST_Response($activefiles, 200);
-      } else {
-        return returnFolderNotFoundErr();
       }
-    }else{
-      return return401Err();
+      return new WP_REST_Response($activefiles, 200);
+    } else {
+      $resp = array();
+      $resp['status']="error";
+      $resp['message']="Folder name cannot be empty.";
+      return new WP_REST_Response($resp, 404);
     }
   }else{
     return return401Err();

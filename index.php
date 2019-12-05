@@ -10,6 +10,7 @@
 require_once('msg.php');
 require_once('S3foldersCrud.php');
 require_once('S3FilesCrud.php');
+require_once('usersCrud.php');
 
 /*** Setting Routs for the webservice */
 add_action( 'rest_api_init', 'register_api_hooks' );
@@ -73,7 +74,7 @@ function register_api_hooks() {
   register_rest_route(
     'drive', '/getUsersS3Files/',
     array(
-      'methods'  => 'POST',
+      'methods'  => 'GET',
       'callback' => 'getUserS3Files',
     )
   );
@@ -82,6 +83,13 @@ function register_api_hooks() {
     array(
       'methods'  => 'POST',
       'callback' => 'deleteUsersS3Files',
+    )
+  );
+  register_rest_route(
+    'drive', '/getAllUsers/',
+    array(
+      'methods'  => 'GET',
+      'callback' => 'getAllUsers',
     )
   );
   register_rest_route(
@@ -606,13 +614,15 @@ function insertFiles($request){
         if(!empty($users)){
            $havemyfiles = get_user_meta($user_id, $requestedFileName, false);
            $checkfolderName = get_user_meta($user_id, "allcreatedFolders", true);
-           if(!empty($checkfolderName)){
+          if(!empty($checkfolderName)){             
+            if (strpos($checkfolderName, $requestedFileName) === false) {
               $addfolderName=$checkfolderName.",".$requestedFileName;
-              $updated = update_user_meta( $user_id, "allcreatedFolders", $addfolderName);
-           }else{
-              $addfolderName=$requestedFileName;
-              $updated = update_user_meta( $user_id, "allcreatedFolders", $addfolderName);
-           }
+              $updated = update_user_meta( $user_id, "allcreatedFolders", $addfolderName);                  
+            }
+          }else{
+            $addfolderName=$requestedFileName;
+            $updated = update_user_meta( $user_id, "allcreatedFolders", $addfolderName);
+          }
            //Already Exist files
            if(!empty($havemyfiles)){
               // $filesArray= $havemyfiles;
